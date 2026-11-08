@@ -1,5 +1,6 @@
 package com.act3.app_eventos
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,21 +43,27 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.act3.app_eventos.ui.theme.App_eventosTheme
-import java.time.LocalDateTime
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.HiltAndroidApp
 
+@HiltAndroidApp
+class EventosApp : Application()
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val vm: EventosViewModel = viewModel()
+            // hiltViewModel() crea el ViewModel con Hilt; al llamarlo aquí es uno solo para toda la app
+            val vm: EventosViewModel = hiltViewModel()
             // Si el usuario todavía no tocó el botón, se usa el tema del sistema
             App_eventosTheme(darkTheme = vm.temaOscuro ?: isSystemInDarkTheme()) {
                 AppEventos(vm)
@@ -65,7 +72,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ---------- Navegación entre las 3 pantallas ----------
+// Navegación entre las 3 pantallas ----------
 
 @Composable
 fun AppEventos(vm: EventosViewModel) {
@@ -97,7 +104,7 @@ fun AppEventos(vm: EventosViewModel) {
     }
 }
 
-// ---------- Estructura que comparten todas las pantallas ----------
+// Estructura que comparten todas las pantallas ----------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,7 +163,7 @@ fun Pantalla(
     )
 }
 
-// ---------- Pantalla 1: Categorías ----------
+// Pantalla 1: Categorías ----------
 
 @Composable
 fun PantallaCategorias(vm: EventosViewModel, onElegir: (Categoria) -> Unit) {
@@ -201,21 +208,15 @@ fun PantallaCategorias(vm: EventosViewModel, onElegir: (Categoria) -> Unit) {
                         }
                     }
                 }
-            }
-        }
-    }
-}
+            } } } }
 
-// ---------- Pantalla 2: Eventos ----------
+// Pantalla 2: Eventos ----------
 
 @Composable
 fun PantallaEventos(vm: EventosViewModel, onVolver: () -> Unit, onAgregar: () -> Unit) {
     var pestana by remember { mutableIntStateOf(0) } // 0 = Próximos, 1 = Finalizados
 
-    val ahora = LocalDateTime.now()
-    val lista = vm.eventos
-        .filter { it.categoria == vm.categoria && it.fechaHora.isAfter(ahora) == (pestana == 0) }
-        .sortedBy { it.fechaHora }
+    val lista = vm.eventosDe(proximos = pestana == 0)
 
     Pantalla(titulo = "Volver", vm = vm, onVolver = onVolver) { padding ->
         Column(
@@ -418,10 +419,7 @@ fun TarjetaEvento(evento: Evento, onEliminar: () -> Unit, modifier: Modifier = M
                         color = colorSecundario
                     )
                 }
-            }
-        }
-    }
-}
+            } } } }
 
 // ---------- Pantalla 3: Registrar nuevo evento ----------
 
@@ -482,9 +480,7 @@ fun PantallaNuevoEvento(vm: EventosViewModel, onVolver: () -> Unit) {
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             )
-                        }
-                    }
-                }
+                        } } }
 
                 Column {
                     Campo(
@@ -572,5 +568,4 @@ fun Campo(
         AnimatedVisibility(visible = error != null) {
             Text(error ?: "", color = Color.Red)
         }
-    }
-}
+    } }

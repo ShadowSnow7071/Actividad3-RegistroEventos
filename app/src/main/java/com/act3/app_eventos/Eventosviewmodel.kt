@@ -13,8 +13,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import javax.inject.Inject
+import javax.inject.Singleton
 
 // Se usa para leer lo que escribe el usuario y también para mostrar las fechas
 val formatoFecha: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yy - HH:mm")
@@ -46,7 +49,8 @@ data class Evento(
     val descripcion: String = ""
 )
 
-class EventosViewModel : ViewModel() {
+@Singleton
+class EventosRepository @Inject constructor() {
 
     // Lista de eventos, al cambiar (agregar o eliminar) la pantalla se actualiza sola
     val eventos = mutableStateListOf<Evento>()
@@ -55,14 +59,14 @@ class EventosViewModel : ViewModel() {
     init {
         // Datos de ejemplo para que la lista no inicie vacía
         val ahora = LocalDateTime.now()
-        agregarInterno("Fútbol Masculino", ahora.plusHours(2), Categoria.Futbol, "CDTAR", Prioridad.Alta, "Partido de la jornada 2, llegar 30 minutos antes.")
-        agregarInterno("Fútbol Femenil", ahora.plusDays(1), Categoria.Futbol, "CDTAR", Prioridad.Media, "Semifinal del torneo femenil.")
-        agregarInterno("Fútbol Mixto", ahora.plusDays(3), Categoria.Futbol, "Tecmilenio", Prioridad.Baja, "Partido amistoso entre carreras.")
-        agregarInterno("Fútbol Varonil Jornada 1", ahora.minusDays(2), Categoria.Futbol, "CDTAR", Prioridad.Media, "Partido ya jugado.")
-        agregarInterno("Voley Mixto", ahora.minusDays(1), Categoria.Voley, "Tecmilenio", Prioridad.Baja, "")
+        agregar("Fútbol Masculino", ahora.plusHours(2), Categoria.Futbol, "CDTAR", Prioridad.Alta, "Partido de la jornada 2, llegar 30 minutos antes.")
+        agregar("Fútbol Femenil", ahora.plusDays(1), Categoria.Futbol, "CDTAR", Prioridad.Media, "Semifinal del torneo femenil.")
+        agregar("Fútbol Mixto", ahora.plusDays(3), Categoria.Futbol, "Tecmilenio", Prioridad.Baja, "Partido amistoso entre carreras.")
+        agregar("Fútbol Varonil Jornada 1", ahora.minusDays(2), Categoria.Futbol, "CDTAR", Prioridad.Media, "Partido ya jugado.")
+        agregar("Voley Mixto", ahora.minusDays(1), Categoria.Voley, "Tecmilenio", Prioridad.Baja, "")
     }
 
-    private fun agregarInterno(
+    fun agregar(
         titulo: String,
         fechaHora: LocalDateTime,
         categoria: Categoria,
@@ -72,6 +76,18 @@ class EventosViewModel : ViewModel() {
     ) {
         eventos.add(Evento(siguienteId++, titulo, fechaHora, categoria, lugar, prioridad, descripcion))
     }
+
+    fun eliminar(evento: Evento) {
+        eventos.remove(evento)
+    }
+}
+
+// VIEWMODEL: estado de las pantallas y validaciones
+
+@HiltViewModel
+class EventosViewModel @Inject constructor(
+    private val repositorio: EventosRepository
+) : ViewModel() {
 
     // Categoría que el usuario eligió en la primera pantalla
     var categoria by mutableStateOf(Categoria.Futbol)
@@ -102,6 +118,14 @@ class EventosViewModel : ViewModel() {
         temaOscuro = !actualOscuro
     }
 
+    // Eventos de la categoría elegida, ordenados por fecha: próximos (true) o finalizados (false)
+    fun eventosDe(proximos: Boolean): List<Evento> {
+        val ahora = LocalDateTime.now()
+        return repositorio.eventos
+            .filter { it.categoria == categoria && it.fechaHora.isAfter(ahora) == proximos }
+            .sortedBy { it.fechaHora }
+    }
+
     fun cambiarTitulo(nuevo: String) {
         titulo = nuevo
     }
@@ -127,13 +151,10 @@ class EventosViewModel : ViewModel() {
     }
 
     fun eliminar(evento: Evento) {
-        eventos.remove(evento)
+        repositorio.eliminar(evento)
     }
 
-    // ---------- Validaciones en tiempo real ----------
-    // Estas propiedades se recalculan cada vez que el usuario escribe, por eso
-    // los errores aparecen y desaparecen mientras se teclea.
-
+    // Validaciones en tiempo real ----------
     val errorTitulo: String?
         get() = when {
             titulo.isEmpty() -> if (intentoGuardar) "El título no puede estar vacío" else null
@@ -146,10 +167,8 @@ class EventosViewModel : ViewModel() {
         get() {
             if (fecha.isEmpty()) return if (intentoGuardar) "La fecha es obligatoria" else null
             val fechaHora = fechaParseada()
-            if (fechaHora == null) {
-                // Mientras la fecha está incompleta no se marca error, solo al terminar de escribirla
+                ?: // Mientras la fecha está incompleta no se marca error, solo al terminar de escribirla
                 return if (fecha.length >= 16 || intentoGuardar) "Usa el formato dd/MM/yy - HH:mm" else null
-            }
             return if (fechaHora.isAfter(LocalDateTime.now())) null else "La fecha y hora deben ser futuras"
         }
 
@@ -173,7 +192,7 @@ class EventosViewModel : ViewModel() {
             return false
         }
 
-        agregarInterno(titulo.trim(), fechaHora, categoria, "Por definir", prioridad, descripcion.trim())
+        repositorio.agregar(titulo.trim(), fechaHora, categoria, "Por definir", prioridad, descripcion.trim())
         limpiarFormulario()
         return true
     }
