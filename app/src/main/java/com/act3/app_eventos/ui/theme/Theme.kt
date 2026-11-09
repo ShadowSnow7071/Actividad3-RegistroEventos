@@ -16,7 +16,7 @@ private val Claro = lightColorScheme(
     onBackground = Color(0xFF3F403F),     // Texto principal
     onSurface = Color(0xFF3F403F),
     onSurfaceVariant = Color(0xFF7C7D7C), // Texto secundario
-    tertiary = Color(0xFFD5DA24),         // Acento
+    tertiary = Color(0xFFBBC024),         // Acento
     outline = Color(0xFFC9E5DE)           // Bordes
 )
 
